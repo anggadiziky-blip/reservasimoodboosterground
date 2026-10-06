@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reservasi Meja & Ruangan - Moodbooster Ground</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #2b221e;
+        }
+        /* Foto kafe sebagai background, diblur + overlay cokelat. Atur .55 (gelap) & 10px (blur) */
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            background:
+                linear-gradient(rgba(43,34,30,.55), rgba(43,34,30,.55)),
+                url('img/cafe-bg.jpg') center / cover no-repeat;
+            filter: blur(10px);
+            transform: scale(1.08);
+        }
+        .brand-bg { background-color: #2b221e; }
+        .brand-text { color: #2b221e; }
+        .brand-btn { background-color: #2b221e; transition: all 0.2s; }
+        .brand-btn:hover { background-color: #3e312b; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+
+        /* Garis input dipertegas dikit biar kelihatan jelas */
+        #reservationForm input,
+        #reservationForm select { border-color: #d6cfc7; }
+        #reservationForm ::placeholder { color: #8a8079; }
+
+        /* iOS Safari tidak mendukung background-attachment: fixed dengan baik */
+        @media (max-width: 768px) {
+            body { background-attachment: scroll; }
+        }
+    </style>
+</head>
+<body class="text-stone-800 min-h-screen flex flex-col justify-between selection:bg-amber-100">
+
+    <header class="w-full bg-white/90 backdrop-blur-md border-b border-stone-200 sticky top-0 z-40 shadow-xs">
+        <div class="max-w-4xl mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <span class="text-xs font-bold tracking-widest text-stone-700 uppercase">Moodbooster Ground Portal</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="switchView('form')" id="navFormBtn" class="px-3.5 py-1.5 text-xs font-semibold rounded-xl bg-[#2b221e] text-white transition shadow-sm">Form Customer</button>
+                <button onclick="switchView('admin')" id="navAdminBtn" class="hidden px-3.5 py-1.5 text-xs font-semibold rounded-xl bg-stone-100 text-stone-600 hover:bg-stone-200 transition">Dashboard Admin</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-5xl mx-auto px-4 py-8 flex-grow w-full">
+
+        <!-- Notification Toast -->
+        <div id="toast" class="hidden mb-6 p-4 rounded-2xl text-sm font-medium transition-all duration-300 shadow-sm flex items-center justify-between border">
+            <span id="toastMsg"></span>
+            <button onclick="hideToast()" class="text-lg font-bold ml-3">&times;</button>
+        </div>
+
+        <!-- Form Section -->
+        <section id="sectionForm" class="bg-white/95 backdrop-blur-sm rounded-3xl shadow-xl border border-stone-200/80 overflow-hidden md:grid md:grid-cols-2 max-w-2xl md:max-w-none mx-auto">
+
+            <!-- Foto utama (atas di HP, kiri di laptop) -->
+            <div class="relative h-72 sm:h-80 md:h-auto">
+                <img src="img/cafe-front.jpg" alt="Tampak depan Moodbooster Ground" class="absolute inset-0 w-full h-full object-cover object-[50%_62%] md:object-center">
+            </div>
+
+            <div class="flex flex-col">
+
+            <!-- Hero Banner: logo Moodbooster Ground -->
+            <div class="relative w-full bg-gradient-to-b from-[#faf8f5] to-white overflow-hidden flex flex-col items-center justify-center px-8 py-8 sm:py-10 border-b border-stone-100">
+                <!-- Simpan file logo di folder img/ dengan nama logo.png (atau ganti ekstensinya di sini) -->
+                <img src="img/logo.png"
+                     alt="Logo Moodbooster Ground"
+                     class="w-full max-w-[260px] object-contain"
+                     id="cafeBannerImg">
+                <div class="w-full flex items-center justify-center gap-3 mt-5">
+                    <div class="h-0.5 bg-[#2b221e]/25 flex-grow max-w-[50px]"></div>
+                    <span class="text-[#2b221e] font-bold text-xs sm:text-sm tracking-[0.2em] uppercase">Reservasi Meja & Ruangan</span>
+                    <div class="h-0.5 bg-[#2b221e]/25 flex-grow max-w-[50px]"></div>
+                </div>
+            </div>
+
+            <div class="p-6 sm:p-8">
+
+                <div class="mb-6 pb-4 border-b border-stone-100 text-center">
+                    <h2 class="text-xl font-bold text-stone-900">Formulir Pemesanan Meja</h2>
+                    <p class="text-xs text-stone-500 mt-1">Silakan lengkapi data di bawah ini untuk mengamankan tempat Anda.</p>
+                </div>
+
+                <form id="reservationForm" onsubmit="handleReservationSubmit(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-stone-600 mb-1.5">Nama Lengkap Pelanggan <span class="text-red-500">*</span></label>
+                        <input type="text" id="custName" required placeholder="Contoh: Rian Pratama" 
+                            class="w-full px-4 py-3 rounded-xl border border-stone-200 focus:ring-2 focus:ring-[#2b221e] focus:border-[#2b221e] outline-none transition text-sm bg-stone-50/50">
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-stone-600 mb-1.5">Nomor WhatsApp <span class="text-red-500">*</span></label>
+                            <input type="tel" id="custPhone" required placeholder="Contoh: 081234567890" 
+                                class="w-full px-4 py-3 rounded-xl border border-stone-200 focus:ring-2 focus:ring-[#2b221e] focus:border-[#2b221e] outline-none transition text-sm bg-stone-50/50">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-stone-600 mb-1.5">Akun Instagram <span class="text-stone-400 font-normal">(Opsional)</span></label>
+                            <input type="text" id="custIg" placeholder="Contoh: @rianpratama" 
+                                class="w-full px-4 py-3 rounded-xl border border-stone-200 focus:ring-2 focus:ring-[#2b221e] focus:border-[#2b221e] outline-none transition text-sm bg-stone-50/50">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-stone-600 mb-1.5">Hari / Tanggal Reservasi <span class="text-red-500">*</span></label>
+                            <input type="date" id="custDate" required 
+                                class="w-full px-4 py-3 rounded-xl border border-stone-200 focus:ring-2 focus:ring-[#2b221e] focus:border-[#2b221e] outline-none transition text-sm bg-stone-50/50">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-stone-600 mb-1.5">Jam Reservasi <span class="text-red-500">*</span></label>
+                            <select id="custTime" required class="w-full px-4 py-3 rounded-xl border border-stone-200 focus:ring-2 focus:ring-[#2b221e] focus:border-[#2b221e] outline-none transition text-sm bg-stone-50/50">
+                                <option value="">Pilih Jam Reservasi</option>
+                                <option value="10:00 WIB">10:00 WIB (Pagi)</option>
+                                <option value="11:00 WIB">11:00 WIB</option>
+                                <option value="12:00 WIB">12:00 WIB (Siang)</option>
+                                <option value="13:00 WIB">13:00 WIB</option>
+                                <option value="14:00 WIB">14:00 WIB</option>
+                                <option value="15:00 WIB">15:00 WIB (Sore)</option>
+                                <option value="16:00 WIB">16:00 WIB</option>
+                                <option value="17:00 WIB">17:00 WIB</option>
+                                <option value="18:00 WIB">18:00 WIB (Malam)</option>
+                                <option value="19:00 WIB">19:00 WIB</option>
+                                <option value="20:00 WIB">20:00 WIB (Terakhir)</option>
+                            </select>
+                            <p class="text-[11px] text-stone-500 mt-1.5">Catatan: toleransi keterlambatan maksimal 10 menit dari jam reservasi.</p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-stone-600 mb-1.5">Jumlah Pax (Orang) <span class="text-red-500">*</span></label>
+                            <input type="number" id="custPax" min="1" max="100" required placeholder="Contoh: 4" 
+                                class="w-full px-4 py-3 rounded-xl border border-stone-200 focus:ring-2 focus:ring-[#2b221e] focus:border-[#2b221e] outline-none transition text-sm bg-stone-50/50">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-stone-600 mb-1.5">Keperluan / Keterangan <span class="text-red-500">*</span></label>
+                            <select id="custPurpose" required class="w-full px-4 py-3 rounded-xl border border-stone-200 focus:ring-2 focus:ring-[#2b221e] focus:border-[#2b221e] outline-none transition text-sm bg-stone-50/50">
+                                <option value="">Pilih Keperluan</option>
+                                <option value="Nongkrong / Santai">Nongkrong / Santai</option>
+                                <option value="Meeting / Kerja Tugas">Meeting / Kerja Tugas</option>
+                                <option value="Ulang Tahun">Ulang Tahun</option>
+                                <option value="Date / Kencan">Date / Kencan</option>
+                                <option value="Acara Keluarga / Gathering">Acara Keluarga / Gathering</option>
+                                <option value="Coffee Party">Coffee Party</option>
+                                <option value="Lainnya">Lainnya</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="pt-4">
+                        <button type="submit" class="w-full brand-btn text-white font-semibold py-3.5 px-6 rounded-xl shadow-md text-sm tracking-wide flex items-center justify-center gap-2">
+                            <span>Konfirmasi Reservasi Sekarang</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+            </div>
+        </section>
+
+        <section id="sectionAdmin" class="hidden space-y-6 max-w-3xl mx-auto">
+            <div class="bg-white/95 backdrop-blur-sm rounded-3xl shadow-xl border border-stone-200 p-6 sm:p-8">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 border-b border-stone-100 pb-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-stone-900">Dashboard Admin Reservasi</h2>
+                        <p class="text-xs text-stone-500 mt-0.5">Kelola pesanan meja kafe yang masuk dari customer.</p>
+                    </div>
+                    <div class="flex items-center gap-2 w-full sm:w-auto flex-wrap">
+                        <button onclick="copyLink()" class="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-[#2b221e] text-white px-4 py-2.5 rounded-xl text-xs font-semibold hover:bg-stone-800 transition shadow-xs">
+                            <span>🔗 Salin Link Reservasi</span>
+                        </button>
+                        <button onclick="resetAllData()" class="flex items-center justify-center gap-1 bg-red-50 text-red-600 border border-red-200 px-3 py-2.5 rounded-xl text-xs font-semibold hover:bg-red-100 transition">
+                            <span>🗑️ Reset Data</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-amber-50 border border-amber-200/70 rounded-2xl p-4 mb-6 text-xs text-amber-900 leading-relaxed">
+                    <p class="font-bold mb-1 flex items-center gap-1.5"><span>💡</span> Informasi Pemilik Kafe:</p>
+                    <p>Bagikan link halaman ini kepada customer. Data pesanan yang masuk otomatis tersimpan di perangkat ini. Nomor WhatsApp kafe terkonfigurasi ke <strong>+62 851-3711-4262</strong>.</p>
+                </div>
+
+                <div class="flex flex-col sm:flex-row gap-3 mb-6">
+                    <div class="flex-grow">
+                        <input type="text" id="adminSearch" oninput="renderAdminList()" placeholder="Cari nama customer, nomor WA, atau keperluan..." 
+                            class="w-full px-4 py-2.5 rounded-xl border border-stone-200 text-xs focus:ring-2 focus:ring-[#2b221e] outline-none bg-stone-50">
+                    </div>
+                    <div class="sm:w-44">
+                        <select id="adminFilterStatus" onchange="renderAdminList()" class="w-full px-3 py-2.5 rounded-xl border border-stone-200 text-xs focus:ring-2 focus:ring-[#2b221e] outline-none bg-stone-50">
+                            <option value="ALL">Semua Status</option>
+                            <option value="PENDING">Pending</option>
+                            <option value="CONFIRMED">Dikonfirmasi</option>
+                            <option value="CANCELLED">Dibatalkan</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="reservationList" class="space-y-4">
+                    <!-- Rendered via JS -->
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <div id="successModal" class="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-stone-100 text-center relative animate-in fade-in zoom-in duration-200">
+            <div class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold">
+                ✓
+            </div>
+            <h3 class="text-xl font-bold text-stone-900 mb-1">Reservasi Berhasil Dicatat!</h3>
+            <p class="text-xs text-stone-500 mb-6">Silakan ketuk tombol di bawah untuk mengirim pesan konfirmasi otomatis ke WhatsApp Moodbooster Ground.</p>
+            
+            <div id="modalDetails" class="bg-stone-50 rounded-2xl p-4 text-left text-xs text-stone-700 space-y-2 mb-6 border border-stone-200/60">
+                <!-- Detail isi reservasi -->
+            </div>
+
+            <div class="flex flex-col gap-2.5">
+                <a id="waConfirmBtn" href="#" target="_blank" onclick="closeSuccessModal()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 px-4 rounded-xl text-xs transition shadow-sm flex items-center justify-center gap-2">
+                    <span>Kirim Konfirmasi ke WhatsApp</span>
+                </a>
+                <button onclick="closeSuccessModal()" class="w-full bg-stone-100 hover:bg-stone-200 text-stone-700 font-semibold py-3 px-4 rounded-xl text-xs transition">
+                    Tutup & Buat Reservasi Baru
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="text-center py-6 text-xs text-stone-300 mt-10">
+        &copy; 2026 Moodbooster Ground. All rights reserved.
+    </footer>
+
+    <script>
+        // Set minimal date to today
+        document.getElementById('custDate').min = new Date().toISOString().split("T")[0];
+
+        // Password dashboard admin - GANTI ini sesuai keinginan lu
+        const ADMIN_PASSWORD = "moodbooster2026";
+        let isAdminUnlocked = false;
+
+        function switchView(view) {
+            const navFormBtn = document.getElementById('navFormBtn');
+            const navAdminBtn = document.getElementById('navAdminBtn');
+            const sectionForm = document.getElementById('sectionForm');
+            const sectionAdmin = document.getElementById('sectionAdmin');
+
+            if (view === 'form') {
+                navFormBtn.className = "px-3.5 py-1.5 text-xs font-semibold rounded-xl bg-[#2b221e] text-white transition shadow-sm";
+                navAdminBtn.className = navAdminBtn.className.replace('bg-[#2b221e] text-white', 'bg-stone-100 text-stone-600 hover:bg-stone-200');
+                sectionForm.classList.remove('hidden');
+                sectionAdmin.classList.add('hidden');
+            } else {
+                if (!isAdminUnlocked) {
+                    const inputPass = prompt("Masukkan password admin:");
+                    if (inputPass !== ADMIN_PASSWORD) {
+                        if (inputPass !== null) alert("Password salah.");
+                        return;
+                    }
+                    isAdminUnlocked = true;
+                }
+                navAdminBtn.classList.remove('hidden');
+                navAdminBtn.className = "px-3.5 py-1.5 text-xs font-semibold rounded-xl bg-[#2b221e] text-white transition shadow-sm";
+                navFormBtn.className = "px-3.5 py-1.5 text-xs font-semibold rounded-xl bg-stone-100 text-stone-600 hover:bg-stone-200 transition";
+                sectionAdmin.classList.remove('hidden');
+                sectionForm.classList.add('hidden');
+                renderAdminList();
+            }
+        }
+
+        // Akses dashboard admin lewat link rahasia: tambahin ?admin=1 di belakang URL
+        // Contoh: https://moodboosterground.web.id/?admin=1
+        document.addEventListener('DOMContentLoaded', function () {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('admin') === '1') {
+                switchView('admin');
+            }
+        });
+
+        function showToast(message, isSuccess = true) {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toastMsg');
+            toastMsg.innerText = message;
+            toast.className = `mb-6 p-4 rounded-2xl text-sm font-medium transition-all duration-300 shadow-sm flex items-center justify-between border ${isSuccess ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-red-50 text-red-800 border-red-200'}`;
+            toast.classList.remove('hidden');
+            setTimeout(() => hideToast(), 5000);
+        }
+
+        function hideToast() {
+            document.getElementById('toast').classList.add('hidden');
+        }
+
+        // GANTI URL DI BAWAH INI dengan Web App URL dari Google Apps Script lu (lihat panduan deploy)
+        const SHEET_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbxoXO1KY3kPe1gYukUW3tj3ETYC9pBogofFHmyK9UEtyBjW3XkzaWvgrmuYcRSyq3Vt/exec";
+
+        function sendToGoogleSheets(item) {
+            if (!SHEET_WEBAPP_URL || SHEET_WEBAPP_URL === "GANTI_DENGAN_URL_WEB_APP_APPS_SCRIPT") return;
+
+            // Kirim data lewat GET request pakai teknik "gambar tak kasat mata" (image beacon).
+            // Ini metode paling stabil & kompatibel di SEMUA browser (termasuk Safari iOS),
+            // karena tidak pakai fetch/iframe sama sekali - jadi kebal dari isu CORS,
+            // redirect, dan pemblokiran cross-site yang suka bikin metode lain gagal diam-diam.
+            const params = new URLSearchParams();
+            Object.keys(item).forEach(key => {
+                params.append(key, item[key] !== undefined && item[key] !== null ? item[key] : '');
+            });
+
+            const beacon = new Image();
+            beacon.src = SHEET_WEBAPP_URL + '?' + params.toString();
+        }
+
+        function handleReservationSubmit(e) {
+            e.preventDefault();
+
+            const newReservation = {
+                id: 'MBG-' + Math.floor(1000 + Math.random() * 9000),
+                name: document.getElementById('custName').value.trim(),
+                phone: document.getElementById('custPhone').value.trim(),
+                ig: document.getElementById('custIg').value.trim() || '-',
+                date: document.getElementById('custDate').value,
+                time: document.getElementById('custTime').value,
+                pax: document.getElementById('custPax').value,
+                purpose: document.getElementById('custPurpose').value,
+                status: 'PENDING',
+                timestamp: new Date().toLocaleString('id-ID')
+            };
+
+            let reservations = JSON.parse(localStorage.getItem('mbg_reservations')) || [];
+            reservations.push(newReservation);
+            localStorage.setItem('mbg_reservations', JSON.stringify(reservations));
+
+            sendToGoogleSheets(newReservation);
+
+            document.getElementById('reservationForm').reset();
+            document.getElementById('custDate').min = new Date().toISOString().split("T")[0];
+
+            showSuccessModal(newReservation);
+        }
+
+        function showSuccessModal(item) {
+            const modal = document.getElementById('successModal');
+            const details = document.getElementById('modalDetails');
+            const waBtn = document.getElementById('waConfirmBtn');
+
+            details.innerHTML = `
+                <div class="flex justify-between"><span>Kode Booking:</span> <strong>#${item.id}</strong></div>
+                <div class="flex justify-between"><span>Nama:</span> <strong>${escapeHtml(item.name)}</strong></div>
+                <div class="flex justify-between"><span>Tanggal:</span> <strong>${item.date} (${item.time})</strong></div>
+                <div class="flex justify-between"><span>Jumlah Pax:</span> <strong>${item.pax} Orang</strong></div>
+                <div class="flex justify-between"><span>Keperluan:</span> <strong>${escapeHtml(item.purpose)}</strong></div>
+            `;
+
+            // Cafe Official WhatsApp Number strictly set to 6285137114262
+            let cafeWhatsApp = "6285137114262"; 
+            let waText = encodeURIComponent(`Halo Moodbooster Ground, saya atas nama ${item.name} ingin mengonfirmasi reservasi meja dengan Kode #${item.id} pada tanggal ${item.date} jam ${item.time} (${item.pax} pax). Keperluan: ${item.purpose}. No WA: ${item.phone}. IG: ${item.ig}. Mohon konfirmasinya, terima kasih!`);
+            
+            waBtn.href = `https://wa.me/${cafeWhatsApp}?text=${waText}`;
+            modal.classList.remove('hidden');
+
+            // Automatically open WhatsApp link
+            setTimeout(() => {
+                window.open(waBtn.href, '_blank');
+            }, 800);
+        }
+
+        function closeSuccessModal() {
+            document.getElementById('successModal').classList.add('hidden');
+        }
+
+        function renderAdminList() {
+            const container = document.getElementById('reservationList');
+            const searchQuery = document.getElementById('adminSearch').value.toLowerCase();
+            const statusFilter = document.getElementById('adminFilterStatus').value;
+
+            let reservations = JSON.parse(localStorage.getItem('mbg_reservations')) || [];
+
+            let filtered = reservations.filter(item => {
+                const matchSearch = item.name.toLowerCase().includes(searchQuery) || 
+                                    item.phone.toLowerCase().includes(searchQuery) || 
+                                    item.purpose.toLowerCase().includes(searchQuery) ||
+                                    item.id.toLowerCase().includes(searchQuery);
+                const matchStatus = statusFilter === 'ALL' || item.status === statusFilter;
+                return matchSearch && matchStatus;
+            });
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-12 text-stone-400 bg-stone-50 rounded-2xl border border-dashed border-stone-200">
+                        <p class="text-sm font-medium">Tidak ada data reservasi yang ditemukan.</p>
+                        <p class="text-xs mt-1">Belum ada pesanan atau filter tidak sesuai.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            filtered.reverse();
+            let html = '';
+            filtered.forEach(item => {
+                let cleanPhone = item.phone.replace(/[^0-9]/g, '');
+                if (cleanPhone.startsWith('0')) {
+                    cleanPhone = '62' + cleanPhone.slice(1);
+                }
+
+                let badgeColor = 'bg-amber-100 text-amber-800 border-amber-200';
+                if (item.status === 'CONFIRMED') badgeColor = 'bg-emerald-100 text-emerald-800 border-emerald-200';
+                if (item.status === 'CANCELLED') badgeColor = 'bg-red-100 text-red-800 border-red-200';
+
+                html += `
+                    <div class="bg-stone-50/90 border border-stone-200 rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 transition hover:bg-stone-50">
+                        <div class="space-y-1.5 flex-grow">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="bg-[#2b221e] text-white text-[10px] font-bold px-2 py-0.5 rounded-md">#${item.id}</span>
+                                <h3 class="font-bold text-stone-900 text-sm">${escapeHtml(item.name)}</h3>
+                                <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full border ${badgeColor}">${item.status}</span>
+                            </div>
+                            <div class="text-xs text-stone-600 flex flex-wrap gap-x-4 gap-y-1">
+                                <span>📱 WA: <strong class="text-stone-800">${escapeHtml(item.phone)}</strong></span>
+                                <span>📸 IG: <strong class="text-stone-800">${escapeHtml(item.ig)}</strong></span>
+                                <span>📅 Tgl: <strong class="text-stone-800">${item.date}</strong></span>
+                                <span>⏰ Jam: <strong class="text-stone-800">${item.time}</strong></span>
+                                <span>👥 Pax: <strong class="text-stone-800">${item.pax} Orang</strong></span>
+                                <span>🎯 Keperluan: <strong class="text-stone-800">${escapeHtml(item.purpose)}</strong></span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 self-end md:self-center flex-wrap">
+                            ${item.status !== 'CONFIRMED' ? `
+                                <button onclick="updateStatus('${item.id}', 'CONFIRMED')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-xl text-xs font-medium transition shadow-xs">
+                                    Konfirmasi
+                                </button>
+                            ` : ''}
+                            ${item.status !== 'CANCELLED' ? `
+                                <button onclick="updateStatus('${item.id}', 'CANCELLED')" class="bg-amber-100 hover:bg-amber-200 text-amber-800 px-3 py-2 rounded-xl text-xs font-medium transition">
+                                    Batalkan
+                                </button>
+                            ` : ''}
+                            <a href="https://wa.me/${cleanPhone}?text=Halo%20${encodeURIComponent(item.name)},%20reservasi%20Anda%20di%20Moodbooster%20Ground%20(Kode:%20%23${item.id})%20pada%20tanggal%20${item.date}%20jam%20${item.time}%20telah%20kami%20terima." target="_blank" 
+                                class="bg-stone-200 hover:bg-stone-300 text-stone-800 px-3 py-2 rounded-xl text-xs font-medium transition flex items-center gap-1">
+                                <span>💬 WA Cust</span>
+                            </a>
+                            <button onclick="deleteReservation('${item.id}')" class="bg-red-50 hover:bg-red-100 text-red-600 px-3 py-2 rounded-xl text-xs font-medium transition border border-red-200">
+                                Hapus
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        function updateStatus(id, newStatus) {
+            let reservations = JSON.parse(localStorage.getItem('mbg_reservations')) || [];
+            reservations = reservations.map(item => {
+                if (item.id === id) {
+                    item.status = newStatus;
+                }
+                return item;
+            });
+            localStorage.setItem('mbg_reservations', JSON.stringify(reservations));
+            renderAdminList();
+            showToast(`Status reservasi #${id} berhasil diubah menjadi ${newStatus}.`);
+        }
+
+        function deleteReservation(id) {
+            if (confirm(`Yakin ingin menghapus data reservasi #${id}?`)) {
+                let reservations = JSON.parse(localStorage.getItem('mbg_reservations')) || [];
+                reservations = reservations.filter(item => item.id !== id);
+                localStorage.setItem('mbg_reservations', JSON.stringify(reservations));
+                renderAdminList();
+                showToast('Data reservasi berhasil dihapus.');
+            }
+        }
+
+        function resetAllData() {
+            if (confirm('PERINGATAN: Semua riwayat data reservasi akan dihapus permanen dari perangkat ini. Lanjutkan?')) {
+                localStorage.removeItem('mbg_reservations');
+                renderAdminList();
+                showToast('Seluruh data reservasi telah di-reset.', false);
+            }
+        }
+
+        function copyLink() {
+            const url = window.location.href.split('#')[0];
+            const temp = document.createElement('input');
+            temp.value = url;
+            document.body.appendChild(temp);
+            temp.select();
+            document.execCommand('copy');
+            document.body.removeChild(temp);
+            showToast('Link reservasi berhasil disalin! Silakan bagikan ke customer.');
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+            return text.toString().replace(/[&<>"']/g, function(m) { return map[m]; });
+        }
+    </script>
+</body>
+</html>
